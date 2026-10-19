@@ -1,0 +1,10 @@
+# Taste
+- Web stack preference: Next.js (App Router, TypeScript) + Tailwind CSS + shadcn/ui for styling; explicitly forbids hand-written/custom CSS ("jangan pakai css sendiri"). Confidence: 0.95
+- Communicates in Indonesian and expects UI text/labels in Indonesian (locale id-ID, e.g. Intl.NumberFormat("id-ID") for currency). Confidence: 0.9
+- Requires mobile-responsive / mobile-first design for web apps (bottom nav on mobile, sidebar on desktop). Confidence: 0.9
+- Wants frontend built decoupled from backend, "ready to integrate" with an API they build themselves; a mock/localStorage fallback is acceptable until the real API exists (switch via env var like NEXT_PUBLIC_API_URL), and the expected API contract (endpoint table + JSON request/response shapes) is documented in README so the backend can be built to match. Confidence: 0.85
+- Keeps React renders pure: never call impure functions (Date.now(), new Date()) during render — compute such values in effects or, preferably, inside react-query queryFn via dedicated hooks (e.g. useUpcomingBills/usePastBills that compute date ranges at fetch time). Confidence: 0.85
+- Verification workflow after code changes: run lint + build, then smoke-test every route via dev server (curl each path, check dev-server logs for runtime errors) before considering the task done. Confidence: 0.7
+- Base UI Button gotcha: when a `Button` renders a non-button via `render={<Link>}`, always pass `nativeButton={false}` — otherwise Base UI warns that native button semantics (forms, accessibility) are lost. Applies to every Button+Link combo in the project. Confidence: 0.9
+- Values accessibility: proactively surfaces framework a11y warnings (e.g. Base UI nativeButton) and expects them fixed, not ignored. Confidence: 0.65
+- Prefers modern fonts over defaults: asked for "font yang lebih modern" and accepted Plus Jakarta Sans (sans) + JetBrains Mono (mono) via next/font/google in place of Geist/Geist_Mono; apply a contemporary type pairing for UI projects. Confidence: 0.7

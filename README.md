@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Daily Expense — Pencatatan Kredit & PayLater
 
-## Getting Started
+Web app untuk mencatat tagihan kredit dan paylater (menggantikan pencatatan Excel). Dibangun dengan **Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui**, responsive (sidebar di desktop, bottom navigation di mobile).
 
-First, run the development server:
+## Fitur
+
+- **Dashboard** — ringkasan *Incoming Due* (periode), Total Tagihan, Sudah Dibayar, *Remaining Amount* (semua), rincian per lender, tagihan jatuh tempo 7 hari ke depan, dan peringatan tagihan lewat tempo.
+- **Tagihan** — daftar tagihan dengan filter periode (bulan/tahun atau semua), pencarian, filter lender & status. Tambah, ubah, dan hapus tagihan. Tabel di desktop, kartu di mobile.
+- **Form** — jumlah tagihan, sudah dibayar, tanggal jatuh tempo (date picker), deskripsi. Sisa tagihan & status dihitung otomatis.
+- **Reporting** — ringkasan per lender (transaksi, total, terbayar, sisa) + detail transaksi per periode, dengan export CSV.
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm run build      # produksi
+npm run lint       # ESLint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Mode Mock vs API
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Tanpa konfigurasi apa pun, app berjalan dalam **mode mock**: data tersimpan di `localStorage` browser (di-seed dengan contoh dari Excel: GoPay, ShopeePay, TikTok, SpinJam, Mandiri). UI bisa langsung dipakai.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Untuk connect ke API Anda, buat `.env.local`:
 
-## Learn More
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+```
 
-To learn more about Next.js, take a look at the following resources:
+Selama `NEXT_PUBLIC_API_URL` kosong → mode mock. Terisi → semua request ke API Anda. Lihat indikator "Mock"/"API" di header/sidebar.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contract API (yang diharapkan dari backend)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Base URL: nilai `NEXT_PUBLIC_API_URL`. Semua request/response JSON.
 
-## Deploy on Vercel
+| Method | Endpoint | Keterangan |
+| --- | --- | --- |
+| `GET` | `/bills?from=&to=&lender=&status=&q=` | Daftar tagihan + filter periode (format tanggal `yyyy-mm-dd`), lender, status (`belum_bayar`/`sebagian`/`lunas`), pencarian |
+| `POST` | `/bills` | Catat tagihan baru |
+| `GET` | `/bills/:id` | Detail tagihan |
+| `PUT` | `/bills/:id` | Perbarui tagihan |
+| `DELETE` | `/bills/:id` | Hapus tagihan |
+| `GET` | `/bills/summary?from=&to=` | Ringkasan periode |
+| `GET` | `/lenders` | Daftar lender (sheet "master") |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Body `POST`/`PUT`:**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```json
+{
+  "lender": "gopay",
+  "amount": 139000,
+  "paidAmount": 0,
+  "dueDate": "2026-11-01",
+  "deskripsi": "shopping"
+}
+```
+
+**Respons `Bill`:**
+
+```json
+{
+  "id": "...",
+  "lender": "gopay",
+  "amount": 139000,
+  "paidAmount": 0,
+  "remainingAmount": 139000,
+  "status": "belum_bayar",
+  "dueDate": "2026-11-01",
+  "deskripsi": "shopping",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+**Respons `GET /bills/summary`:**
+
+```json
+{
+  "total": 1121205,
+  "paid": 0,
+  "remaining": 1121205,
+  "remainingAll": 3148729,
+  "perLender": [
+    { "lender": "gopay", "count": 1, "total": 139000, "paid": 0, "remaining": 139000 }
+  ]
+}
+```
+
+> Catatan: `remainingAmount` (= `amount` − `paidAmount`) dan `status` sebaiknya dihitung di backend agar konsisten dengan mode mock.
+
+## Struktur Proyek
+
+```
+src/
+├── app/                  # Halaman: dashboard, bills, bills/new, bills/[id]/edit, reporting
+├── components/           # AppShell, form, tabel, kartu, filter periode, dst.
+├── hooks/use-bills.ts    # React Query hooks
+├── lib/
+│   ├── api.ts            # HTTP client + fallback mock (localStorage)
+│   ├── types.ts          # Bill, BillStatus, BillSummary, Lender
+│   ├── format.ts         # format Rupiah (id-ID), tanggal
+│   └── export.ts         # export CSV
+└── ...
+```
+
+## Stack
+
+- [Next.js 16](https://nextjs.org) (App Router, TypeScript)
+- [Tailwind CSS 4](https://tailwindcss.com)
+- [shadcn/ui](https://ui.shadcn.com) (Base UI) — tidak ada CSS custom
+- [TanStack Query](https://tanstack.com/query) untuk state server
+- [React Hook Form](https://react-hook-form.com) + [Zod](https://zod.dev) untuk form & validasi

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(npx --yes shadcn@latest add card input label select table dialog badge form date-picker sonner skeleton dropdown-menu separator tabs popover calendar textarea -y 2 >& 1)",
+      "Shell(npm:*)",
+      "Shell(ls:*)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}
