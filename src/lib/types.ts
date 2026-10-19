@@ -50,6 +50,30 @@ export interface Lender {
   name: string;
 }
 
+export interface User {
+  id: string;
+  createdAt: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export interface SignInRequest {
+  email: string;
+  password: string;
+}
+
+export interface SignInResponse {
+  token: string;
+}
+
+export interface RegisterInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
 export const BILL_STATUS_LABELS: Record<BillStatus, string> = {
   belum_bayar: "Belum Bayar",
   sebagian: "Dibayar Sebagian",

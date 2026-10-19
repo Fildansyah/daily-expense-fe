@@ -34,6 +34,18 @@ Selama `NEXT_PUBLIC_API_URL` kosong → mode mock. Terisi → semua request ke A
 
 Base URL: nilai `NEXT_PUBLIC_API_URL`. Semua request/response JSON.
 
+Semua respons dibungkus envelope standar (sesuai `base_response` Go Fiber):
+
+```json
+{ "status": "success", "data": ... }
+```
+
+```json
+{ "status": "error", "error": "pesan kesalahan" }
+```
+
+Contoh payload di bawah menunjukkan isi dari `data`.
+
 | Method | Endpoint | Keterangan |
 | --- | --- | --- |
 | `GET` | `/bills?from=&to=&lender=&status=&q=` | Daftar tagihan + filter periode (format tanggal `yyyy-mm-dd`), lender, status (`belum_bayar`/`sebagian`/`lunas`), pencarian |
@@ -73,7 +85,7 @@ Base URL: nilai `NEXT_PUBLIC_API_URL`. Semua request/response JSON.
 }
 ```
 
-**Respons `GET /bills/summary`:**
+**Respons `GET /bills/summary` (isi `data`):**
 
 ```json
 {
@@ -88,6 +100,8 @@ Base URL: nilai `NEXT_PUBLIC_API_URL`. Semua request/response JSON.
 ```
 
 > Catatan: `remainingAmount` (= `amount` − `paidAmount`) dan `status` sebaiknya dihitung di backend agar konsisten dengan mode mock.
+>
+> Endpoint yang tidak terpakai (mis. `DELETE` tanpa body) boleh mengembalikan `204 No Content`.
 
 ## Struktur Proyek
 

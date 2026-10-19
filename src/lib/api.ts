@@ -7,29 +7,116 @@ import {
   type BillSummary,
   type Lender,
   type LenderSummary,
+  type RegisterInput,
+  type SignInRequest,
+  type SignInResponse,
+  type User,
 } from "./types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 
+// Base URL untuk endpoint publik (login/register). Backend menyajikan auth
+// di `/public` dan resource di `/api`, sehingga kita turunkan dari API_URL
+// (konvensi: diakhiri `/api`).
+const PUBLIC_URL = `${API_URL.replace(/\/api$/, "")}/public`;
+
 export const USE_MOCK = !API_URL;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    let message = `Request gagal (${res.status})`;
-    try {
-      const body = (await res.json()) as { message?: string };
-      if (body?.message) message = body.message;
-    } catch {
-      /* abaikan */
-    }
+/* ------------------------------ Auth token ----------------------------- */
+const TOKEN_KEY = "daily-expense.token.v1";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setToken(token: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    /* storage tidak tersedia */
+  }
+}
+
+export function clearToken(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage tidak tersedia */
+  }
+}
+
+// Handler yang dipanggil saat ada respons 401 (sesi tidak valid).
+// AuthProvider mendaftarkan fungsi untuk membersihkan state auth.
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(cb: (() => void) | null): void {
+  onUnauthorized = cb;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Implementasi HTTP — dipakai saat NEXT_PUBLIC_API_URL diisi        */
+/*  Standar respons API (Go Fiber):                                  */
+/*    { "status": "success", "data": ... }                            */
+/*    { "status": "error", "error": "pesan" }                         */
+/* ------------------------------------------------------------------ */
+interface ApiEnvelope<T> {
+  status?: string;
+  data?: T;
+  error?: string;
+}
+
+async function requestUrl<T>(url: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((init?.headers as Record<string, string> | undefined) ?? {}),
+  };
+
+  // Lampirkan token JWT untuk request ke API (bukan mode mock)
+  if (!USE_MOCK) {
+    const token = getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, { ...init, headers });
+
+  if (res.status === 401) {
+    clearToken();
+    onUnauthorized?.();
+    throw new Error("Sesi berakhir, silakan login kembali");
+  }
+
+  if (res.status === 204) return undefined as T;
+
+  let body: ApiEnvelope<T> | null = null;
+  try {
+    body = (await res.json()) as ApiEnvelope<T>;
+  } catch {
+    /* respons tanpa body JSON */
+  }
+
+  if (!res.ok || body?.status === "error") {
+    const message =
+      body?.error ??
+      (body?.status === "error" ? "Terjadi kesalahan" : null) ??
+      `Request gagal (${res.status})`;
     throw new Error(message);
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+
+  if (body && typeof body === "object" && "data" in body) {
+    return body.data as T;
+  }
+
+  return body as T;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return requestUrl<T>(`${API_URL}${path}`, init);
 }
 
 function buildQuery(filters: BillFilters): string {
@@ -57,6 +144,20 @@ const httpApi = {
   summary: (filters: BillFilters) =>
     request<BillSummary>(`/bills/summary${buildQuery(filters)}`),
   lenders: () => request<Lender[]>("/lenders"),
+};
+
+export const authApi = {
+  login: (email: string, password: string) =>
+    requestUrl<SignInResponse>(`${PUBLIC_URL}/user/login`, {
+      method: "POST",
+      body: JSON.stringify({ email, password } as SignInRequest),
+    }),
+  register: (input: RegisterInput) =>
+    requestUrl<User>(`${PUBLIC_URL}/user`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  me: () => request<User>("/user/me"),
 };
 
 /* ------------------------------------------------------------------ */

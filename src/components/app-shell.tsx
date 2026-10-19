@@ -1,17 +1,21 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   ReceiptText,
   ChartColumn,
   CircleDollarSign,
+  LogOut,
 } from "lucide-react"
 
 import { cn } from "cn"
 import { USE_MOCK } from "@/lib/api"
+import { useAuth } from "@/hooks/use-auth"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -41,6 +45,38 @@ function Brand({ compact = false }: { compact?: boolean }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, status, logout } = useAuth()
+  const isLoginPage = pathname.startsWith("/login")
+
+  // Pengalihan berdasarkan status auth:
+  // - halaman login + sudah login → dashboard
+  // - halaman protected + belum login → login
+  useEffect(() => {
+    if (isLoginPage) {
+      if (status === "authenticated") router.replace("/dashboard")
+    } else if (status === "unauthenticated") {
+      router.replace("/login")
+    }
+  }, [status, isLoginPage, router])
+
+  // Halaman login ditampilkan tanpa sidebar & navigasi
+  if (isLoginPage) {
+    return <div className="min-h-dvh bg-background">{children}</div>
+  }
+
+  // Tampilkan layar muat saat memeriksa sesi / mengalihkan
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Memuat…</p>
+      </div>
+    )
+  }
+
+  const fullName = user
+    ? `${user.firstName} ${user.lastName}`.trim() || user.email
+    : null
 
   return (
     <div className="min-h-dvh bg-background">
@@ -69,9 +105,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="border-t p-4">
-          <Badge variant={USE_MOCK ? "secondary" : "outline"} className="w-fit">
+          <Badge
+            variant={USE_MOCK ? "secondary" : "outline"}
+            className="w-fit"
+          >
             {USE_MOCK ? "Mode Mock (localStorage)" : "Mode API"}
           </Badge>
+          {fullName && (
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{fullName}</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={logout}
+                aria-label="Keluar"
+                title="Keluar"
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -80,9 +138,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Link href="/dashboard">
           <Brand />
         </Link>
-        <Badge variant={USE_MOCK ? "secondary" : "outline"}>
-          {USE_MOCK ? "Mock" : "API"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={USE_MOCK ? "secondary" : "outline"}>
+            {USE_MOCK ? "Mock" : "API"}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={logout}
+            aria-label="Keluar"
+          >
+            <LogOut className="size-4" />
+          </Button>
+        </div>
       </header>
 
       {/* Konten */}
