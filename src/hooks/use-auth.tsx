@@ -10,12 +10,11 @@ import {
   type ReactNode,
 } from "react"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 
 import {
   authApi,
-  clearToken,
-  getToken,
-  setToken,
+  setAccessToken,
   setUnauthorizedHandler,
   USE_MOCK,
 } from "@/lib/api"
@@ -28,10 +27,12 @@ interface AuthContextValue {
   status: AuthStatus
   login: (email: string, password: string) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+const AUTH_CHANNEL = "daily-expense-auth"
 
 // User palsu untuk mode mock — auth dilewati karena tidak ada backend.
 const MOCK_USER: User = {
@@ -42,79 +43,138 @@ const MOCK_USER: User = {
   email: "mock@local.dev",
 }
 
+function broadcastAuth(message: "login" | "logout") {
+  if (typeof window === "undefined" || !("BroadcastChannel" in window)) return
+  const channel = new BroadcastChannel(AUTH_CHANNEL)
+  channel.postMessage(message)
+  channel.close()
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Status awal ditentukan saat render (lazy initializer), bukan lewat
-  // effect, agar tidak ada setState sinkron di dalam effect.
   const [user, setUser] = useState<User | null>(() =>
     USE_MOCK ? MOCK_USER : null,
   )
-  const [status, setStatus] = useState<AuthStatus>(() => {
-    if (USE_MOCK) return "authenticated"
-    // Ada token tersimpan → periksa dulu validitasnya; tanpa token → langsung
-    // dianggap belum login.
-    return getToken() ? "loading" : "unauthenticated"
-  })
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    USE_MOCK ? "authenticated" : "loading",
+  )
   const router = useRouter()
+  const queryClient = useQueryClient()
 
-  // Pulihkan sesi saat aplikasi dimuat (hanya mode API).
-  // Token yang tersimpan divalidasi lewat GET /user/me.
+  const applySession = useCallback((nextUser: User) => {
+    setUser(nextUser)
+    setStatus("authenticated")
+  }, [])
+
+  const clearSession = useCallback(() => {
+    setAccessToken(null)
+    setUser(null)
+    setStatus("unauthenticated")
+    // Jangan biarkan data user sebelumnya tersaji dari cache setelah login user lain.
+    queryClient.clear()
+  }, [queryClient])
+
+  // Pulihkan sesi saat aplikasi dimuat (mode API).
+  // Access token hanya ada di memori, jadi selalu minta yang baru via cookie refresh.
   useEffect(() => {
     if (USE_MOCK) return
-
-    const token = getToken()
-    if (!token) return // status sudah "unauthenticated" dari initializer
 
     let cancelled = false
 
     authApi
-      .me()
-      .then((u) => {
+      .refresh()
+      .then((res) => {
         if (cancelled) return
-        setUser(u)
-        setStatus("authenticated")
+        setAccessToken(res.accessToken)
+        applySession(res.user)
       })
       .catch(() => {
         if (cancelled) return
-        clearToken()
-        setUser(null)
-        setStatus("unauthenticated")
+        clearSession()
       })
 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [applySession, clearSession])
 
-  // Tangani 401 dari request API manapun: bersihkan state auth.
-  // AppShell akan mengarahkan ke /login saat status jadi unauthenticated.
+  // 401 dari request terautentikasi yang gagal di-refresh.
   useEffect(() => {
     if (USE_MOCK) return
 
     setUnauthorizedHandler(() => {
-      setUser(null)
-      setStatus("unauthenticated")
+      clearSession()
     })
-    return () => setUnauthorizedHandler(null)
-  }, [])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await authApi.login(email, password)
-    setToken(res.token)
-    const u = await authApi.me()
-    setUser(u)
-    setStatus("authenticated")
-  }, [])
+    return () => setUnauthorizedHandler(null)
+  }, [clearSession])
+
+  // Sinkronisasi login/logout antar tab.
+  useEffect(() => {
+    if (USE_MOCK) return
+    if (typeof window === "undefined" || !("BroadcastChannel" in window)) return
+
+    const channel = new BroadcastChannel(AUTH_CHANNEL)
+    channel.onmessage = (event: MessageEvent) => {
+      if (event.data === "logout") {
+        clearSession()
+        return
+      }
+      if (event.data === "login") {
+        authApi
+          .refresh()
+          .then((res) => {
+            setAccessToken(res.accessToken)
+            applySession(res.user)
+          })
+          .catch(() => {
+            /* tab ini akan mencoba lagi saat ada request */
+          })
+      }
+    }
+
+    return () => channel.close()
+  }, [applySession, clearSession])
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      if (USE_MOCK) {
+        applySession(MOCK_USER)
+        broadcastAuth("login")
+        return
+      }
+
+      const res = await authApi.login(email.trim().toLowerCase(), password)
+      setAccessToken(res.accessToken)
+      applySession(res.user)
+      queryClient.clear()
+      broadcastAuth("login")
+    },
+    [applySession, queryClient],
+  )
 
   const register = useCallback(async (input: RegisterInput) => {
-    await authApi.register(input)
+    if (USE_MOCK) return
+    await authApi.register({
+      ...input,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      email: input.email.trim().toLowerCase(),
+    })
   }, [])
 
-  const logout = useCallback(() => {
-    clearToken()
-    setUser(null)
-    setStatus("unauthenticated")
+  const logout = useCallback(async () => {
+    if (!USE_MOCK) {
+      try {
+        await authApi.logout()
+      } catch {
+        /* tetap bersihkan sesi lokal walau server tidak terjangkau */
+      }
+    }
+
+    clearSession()
+    broadcastAuth("logout")
     router.replace("/login")
-  }, [router])
+  }, [clearSession, router])
 
   const value = useMemo(
     () => ({ user, status, login, register, logout }),

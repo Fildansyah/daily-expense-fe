@@ -46,6 +46,23 @@ Semua respons dibungkus envelope standar (sesuai `base_response` Go Fiber):
 
 Contoh payload di bawah menunjukkan isi dari `data`.
 
+## Autentikasi
+
+- Login mengembalikan **access token** (JWT, 15 menit) di body dan **refresh token** di cookie `httpOnly` (7 hari, `Path=/`).
+- Access token disimpan **di memori** frontend, tidak di `localStorage`.
+- Setiap request ke `/api/*` menyertakan `Authorization: Bearer <accessToken>`.
+- Saat access token kedaluwarsa (401), frontend otomatis memanggil `/public/auth/refresh` sekali lalu mengulang request.
+- Logout memanggil `/public/auth/logout` sehingga refresh token dicabut di server dan cookie dihapus.
+- Cookie memakai `SameSite=Lax` (default). Saat dev, akses frontend dan API lewat host yang sama (`localhost`), bukan `127.0.0.1`.
+
+| Method | Endpoint | Keterangan |
+| --- | --- | --- |
+| `POST` | `/public/user` | Register. Body: `firstName`, `lastName`, `email`, `password` (min. 8 karakter). Respons `201` |
+| `POST` | `/public/user/login` | Login. Body: `email`, `password`. Respons `{ accessToken, expiresIn, user }` + `Set-Cookie: refresh_token` |
+| `POST` | `/public/auth/refresh` | Rotasi refresh token (pakai cookie) dan kembalikan access token baru |
+| `POST` | `/public/auth/logout` | Cabut refresh token dan hapus cookie |
+| `GET` | `/api/user/me` | Profil user yang sedang login (butuh Bearer token) |
+
 | Method | Endpoint | Keterangan |
 | --- | --- | --- |
 | `GET` | `/bills?from=&to=&lender=&status=&q=` | Daftar tagihan + filter periode (format tanggal `yyyy-mm-dd`), lender, status (`belum_bayar`/`sebagian`/`lunas`), pencarian |

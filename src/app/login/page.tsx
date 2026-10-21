@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
@@ -14,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card"
 type Mode = "login" | "register"
 
 export default function LoginPage() {
-  const router = useRouter()
   const { login, register } = useAuth()
 
   const [mode, setMode] = useState<Mode>("login")
@@ -33,7 +31,6 @@ export default function LoginPage() {
       if (mode === "login") {
         await login(email, password)
         toast.success("Selamat datang kembali")
-        router.push("/dashboard")
       } else {
         await register({ firstName, lastName, email, password })
         toast.success("Registrasi berhasil, silakan login")
@@ -107,7 +104,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
 

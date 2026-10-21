@@ -58,13 +58,15 @@ export interface User {
   email: string;
 }
 
-export interface SignInRequest {
+export interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface SignInResponse {
-  token: string;
+export interface AuthResponse {
+  accessToken: string;
+  expiresIn: number;
+  user: User;
 }
 
 export interface RegisterInput {

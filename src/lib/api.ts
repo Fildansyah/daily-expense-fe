@@ -1,15 +1,15 @@
 import {
   deriveRemaining,
   deriveStatus,
+  type AuthResponse,
   type Bill,
   type BillFilters,
   type BillInput,
   type BillSummary,
   type Lender,
   type LenderSummary,
+  type LoginRequest,
   type RegisterInput,
-  type SignInRequest,
-  type SignInResponse,
   type User,
 } from "./types";
 
@@ -23,36 +23,19 @@ const PUBLIC_URL = `${API_URL.replace(/\/api$/, "")}/public`;
 export const USE_MOCK = !API_URL;
 
 /* ------------------------------ Auth token ----------------------------- */
-const TOKEN_KEY = "daily-expense.token.v1";
+// Access token hanya disimpan di memori (tidak pernah di localStorage).
+// Refresh token ada di cookie httpOnly yang dikelola browser.
+let accessToken: string | null = null;
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+export function getAccessToken(): string | null {
+  return accessToken;
 }
 
-export function setToken(token: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    /* storage tidak tersedia */
-  }
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
 }
 
-export function clearToken(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* storage tidak tersedia */
-  }
-}
-
-// Handler yang dipanggil saat ada respons 401 (sesi tidak valid).
+// Handler yang dipanggil saat sesi benar-benar tidak valid (refresh gagal).
 // AuthProvider mendaftarkan fungsi untuk membersihkan state auth.
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(cb: (() => void) | null): void {
@@ -71,25 +54,58 @@ interface ApiEnvelope<T> {
   error?: string;
 }
 
-async function requestUrl<T>(url: string, init?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((init?.headers as Record<string, string> | undefined) ?? {}),
-  };
+type RequestOptions = {
+  auth?: boolean;
+  retryOn401?: boolean;
+};
 
-  // Lampirkan token JWT untuk request ke API (bukan mode mock)
-  if (!USE_MOCK) {
-    const token = getToken();
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const result = await requestUrl<AuthResponse>(
+          `${PUBLIC_URL}/auth/refresh`,
+          { method: "POST" },
+          { auth: false, retryOn401: false },
+        );
+        setAccessToken(result.accessToken);
+        return result.accessToken;
+      } catch {
+        setAccessToken(null);
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
   }
 
-  const res = await fetch(url, { ...init, headers });
+  return refreshPromise;
+}
 
-  if (res.status === 401) {
-    clearToken();
-    onUnauthorized?.();
-    throw new Error("Sesi berakhir, silakan login kembali");
+async function requestUrl<T>(
+  url: string,
+  init?: RequestInit,
+  options: RequestOptions = {},
+): Promise<T> {
+  const { auth = true, retryOn401 = true } = options;
+
+  const headers = new Headers(init?.headers);
+  headers.set("Accept", "application/json");
+  if (init?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
+  if (auth && accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    // Cookie refresh hanya dikirim ke endpoint auth.
+    credentials: auth ? "same-origin" : "include",
+  });
 
   if (res.status === 204) return undefined as T;
 
@@ -98,6 +114,23 @@ async function requestUrl<T>(url: string, init?: RequestInit): Promise<T> {
     body = (await res.json()) as ApiEnvelope<T>;
   } catch {
     /* respons tanpa body JSON */
+  }
+
+  if (res.status === 401) {
+    if (auth && retryOn401) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        return requestUrl<T>(url, init, { auth: true, retryOn401: false });
+      }
+    }
+
+    if (auth) {
+      setAccessToken(null);
+      onUnauthorized?.();
+      throw new Error(body?.error ?? "Sesi berakhir, silakan login kembali");
+    }
+
+    throw new Error(body?.error ?? "Email atau kata sandi salah");
   }
 
   if (!res.ok || body?.status === "error") {
@@ -148,15 +181,35 @@ const httpApi = {
 
 export const authApi = {
   login: (email: string, password: string) =>
-    requestUrl<SignInResponse>(`${PUBLIC_URL}/user/login`, {
-      method: "POST",
-      body: JSON.stringify({ email, password } as SignInRequest),
-    }),
+    requestUrl<AuthResponse>(
+      `${PUBLIC_URL}/user/login`,
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password } as LoginRequest),
+      },
+      { auth: false, retryOn401: false },
+    ),
+  refresh: () =>
+    requestUrl<AuthResponse>(
+      `${PUBLIC_URL}/auth/refresh`,
+      { method: "POST" },
+      { auth: false, retryOn401: false },
+    ),
+  logout: () =>
+    requestUrl<{ message: string }>(
+      `${PUBLIC_URL}/auth/logout`,
+      { method: "POST" },
+      { auth: false, retryOn401: false },
+    ),
   register: (input: RegisterInput) =>
-    requestUrl<User>(`${PUBLIC_URL}/user`, {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
+    requestUrl<User>(
+      `${PUBLIC_URL}/user`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+      { auth: false, retryOn401: false },
+    ),
   me: () => request<User>("/user/me"),
 };
 
