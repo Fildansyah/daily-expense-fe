@@ -13,12 +13,31 @@ import {
   type User,
 } from "./types";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+// Nilai NEXT_PUBLIC_API_URL harus absolut (https://domain/api) atau root-relative
+// (/api). Tanpa skema, fetch akan memperlakukannya sebagai path relatif dan
+// menempelkannya ke URL halaman — mis. https://domain/domain/public/user/login.
+function normalizeApiUrl(raw: string): string {
+  const value = raw.trim().replace(/\/+$/, "");
+  if (!value) return "";
+  if (value.startsWith("/")) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `https://${value.replace(/^\/+/, "")}`;
+}
+
+const API_URL = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL ?? "");
 
 // Base URL untuk endpoint publik (login/register). Backend menyajikan auth
 // di `/public` dan resource di `/api`, sehingga kita turunkan dari API_URL
 // (konvensi: diakhiri `/api`).
-const PUBLIC_URL = `${API_URL.replace(/\/api$/, "")}/public`;
+const PUBLIC_URL = API_URL
+  ? `${API_URL.replace(/\/api$/, "")}/public`
+  : "/public";
+
+if (API_URL && !API_URL.endsWith("/api")) {
+  console.warn(
+    `NEXT_PUBLIC_API_URL sebaiknya diakhiri "/api" (nilai sekarang: ${API_URL}).`,
+  );
+}
 
 export const USE_MOCK = !API_URL;
 
