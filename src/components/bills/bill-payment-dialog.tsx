@@ -33,12 +33,14 @@ interface BillPaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   bill: Bill
+  preset?: "full" | "minimum"
 }
 
 export function BillPaymentDialog({
   open,
   onOpenChange,
   bill,
+  preset = "full",
 }: BillPaymentDialogProps) {
   const addPayment = useAddPayment()
   const walletsQuery = useWallets()
@@ -50,9 +52,15 @@ export function BillPaymentDialog({
     [categoriesQuery.data],
   )
 
-  const [amount, setAmount] = useState(
-    bill.remainingAmount > 0 ? String(Math.round(bill.remainingAmount)) : "",
+  const minimumAmount = Math.min(
+    bill.remainingAmount,
+    Math.max(50_000, Math.round(bill.remainingAmount * 0.05)),
   )
+
+  const [amount, setAmount] = useState(() => {
+    const initial = preset === "minimum" ? minimumAmount : bill.remainingAmount
+    return initial > 0 ? String(Math.round(initial)) : ""
+  })
   const [walletId, setWalletId] = useState(wallets[0]?.id ?? "")
   const [categoryId, setCategoryId] = useState(bill.categoryId ?? "")
   const [paidAt, setPaidAt] = useState(() => toISODate(new Date()))
@@ -74,15 +82,11 @@ export function BillPaymentDialog({
     })),
   ]
   const remainingAfter = Math.max(0, bill.amount - bill.paidAmount - amountValue)
-  const minimum = Math.min(
-    bill.remainingAmount,
-    Math.max(50_000, Math.round(bill.remainingAmount * 0.05)),
-  )
   const quickAmounts = Array.from(
     new Set([
       Math.round(bill.remainingAmount),
       Math.round(bill.remainingAmount / 2),
-      minimum,
+      minimumAmount,
     ]),
   ).filter((value) => value > 0 && value <= bill.remainingAmount)
 
@@ -181,7 +185,7 @@ export function BillPaymentDialog({
                   >
                     {value === Math.round(bill.remainingAmount)
                       ? "Bayar penuh"
-                      : value === minimum
+                      : value === minimumAmount
                         ? "Minimum"
                         : "50%"}{" "}
                     {formatIDR(value)}

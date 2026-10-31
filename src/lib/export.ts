@@ -1,4 +1,6 @@
+import type { Wallet } from "./api/types/wallet"
 import { BILL_STATUS_LABELS, type Bill, type Budget, type Transaction } from "./types"
+import { maskedAccount } from "./wallet"
 
 function escapeCSV(v: string | number): string {
   const s = String(v)
@@ -72,6 +74,63 @@ const TRANSACTION_TYPE_LABELS: Record<string, string> = {
   INCOME: "Pemasukan",
   EXPENSE: "Pengeluaran",
   TRANSFER: "Transfer",
+}
+
+export interface AccountStatementInput {
+  wallet: Pick<
+    Wallet,
+    "name" | "accountNumber" | "currency" | "creditLimit" | "used" | "available"
+  >
+  transactions: Transaction[]
+  from: string
+  to: string
+}
+
+function slugify(value: string): string {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "akun"
+  )
+}
+
+export function exportAccountStatementCSV({
+  wallet,
+  transactions,
+  from,
+  to,
+}: AccountStatementInput): void {
+  const limit = wallet.creditLimit ?? 0
+  const rows: (string | number)[][] = [
+    ["Statement Akun", wallet.name],
+    ["Nomor", maskedAccount(wallet.accountNumber)],
+    ["Mata Uang", wallet.currency],
+    ["Periode", `${from} s.d. ${to}`],
+    ["Limit / Terpakai / Sisa", `${limit} / ${wallet.used} / ${wallet.available}`],
+    [],
+    ["Tanggal", "Tipe", "Kategori", "Catatan", "Akun", "Akun Tujuan", "Jumlah"],
+    ...transactions.map((transaction) => [
+      transaction.date,
+      TRANSACTION_TYPE_LABELS[transaction.type] ?? transaction.type,
+      transaction.category?.name ?? "",
+      transaction.memo,
+      transaction.wallet?.name ?? "",
+      transaction.transferWallet?.name ?? "",
+      transaction.amount,
+    ]),
+  ]
+
+  const csv = "\uFEFF" + rows.map((row) => row.map(escapeCSV).join(",")).join("\r\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `statement-${slugify(wallet.name)}-${from}_${to}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 export function exportTransactionsCSV(

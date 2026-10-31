@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CreditCard, MoreHorizontal } from "lucide-react"
+import { ArrowRight, CreditCard, MoreHorizontal } from "lucide-react"
 import { cn } from "cn"
 
 import type { Wallet } from "@/lib/api/types/wallet"
@@ -36,7 +36,12 @@ function AccountMenu({ wallet, onEdit, onArchive }: AccountCardProps) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon-sm" aria-label="Aksi akun" />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="relative z-10"
+            aria-label="Aksi akun"
+          />
         }
       >
         <MoreHorizontal className="size-4" />
@@ -58,7 +63,12 @@ export function DebitAccountCard(props: AccountCardProps) {
   const { wallet } = props
 
   return (
-    <Card>
+    <Card className="relative transition-colors hover:border-primary/40">
+      <Link
+        href={`/accounts/${wallet.id}`}
+        aria-label={`Buka detail ${wallet.name}`}
+        className="absolute inset-0 z-0 rounded-2xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      />
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -95,6 +105,11 @@ export function DebitAccountCard(props: AccountCardProps) {
             </span>
           ) : null}
         </div>
+
+        <span className="flex items-center gap-1 text-caption font-medium text-primary">
+          Lihat detail
+          <ArrowRight className="size-3" />
+        </span>
       </CardContent>
     </Card>
   )
@@ -113,7 +128,12 @@ export function CreditAccountCard(props: AccountCardProps) {
   const limit = wallet.creditLimit ?? 0
 
   return (
-    <Card>
+    <Card className="relative transition-colors hover:border-primary/40">
+      <Link
+        href={`/accounts/${wallet.id}`}
+        aria-label={`Buka detail ${wallet.name}`}
+        className="absolute inset-0 z-0 rounded-2xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      />
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -206,15 +226,15 @@ export function CreditAccountCard(props: AccountCardProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="relative z-10 flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             className="flex-1"
-            disabled
-            title="Endpoint statement belum tersedia"
+            render={<Link href={`/accounts/${wallet.id}`} />}
+            nativeButton={false}
           >
-            Statement
+            Lihat Detail
           </Button>
           <Button
             size="sm"

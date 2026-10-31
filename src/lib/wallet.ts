@@ -1,3 +1,4 @@
+import type { Bill } from "@/lib/api/types/bill"
 import type { Wallet, WalletInput, WalletType } from "@/lib/api/types/wallet"
 
 export function isLiability(type?: string): boolean {
@@ -99,8 +100,25 @@ export function minimumPayment(outstanding: number): number {
   return Math.max(50_000, Math.round(outstanding * 0.05))
 }
 
-export function utilizationBand(value: number): "sehat" | "waspada" | "kritis" {
+export type UtilizationBand = "sehat" | "waspada" | "kritis"
+
+export function utilizationBand(value: number): UtilizationBand {
   if (value >= 70) return "kritis"
   if (value >= 40) return "waspada"
   return "sehat"
+}
+
+export function installmentPortion(bills: Bill[]): number {
+  return bills.reduce(
+    (sum, bill) => (bill.installmentTotal ? sum + bill.remainingAmount : sum),
+    0,
+  )
+}
+
+export function punctualityRate(
+  payments: { paidAt: string; dueDate: string }[],
+): number | null {
+  if (payments.length === 0) return null
+  const onTime = payments.filter((payment) => payment.paidAt <= payment.dueDate).length
+  return Math.round((onTime / payments.length) * 100)
 }

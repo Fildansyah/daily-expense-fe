@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { ChevronsUpDown, LogOut, Settings, Wallet } from "lucide-react"
-import { cn } from "cn"
+import Link from "next/link";
+import { ChevronsUpDown, LogOut, Settings, Wallet } from "lucide-react";
+import { cn } from "cn";
 
-import { NAV_ITEMS, isNavActive } from "@/components/layout/nav-items"
-import { Button } from "@/components/ui/button"
-import type { User } from "@/lib/types"
+import { NAV_ITEMS, isNavActive } from "@/components/layout/nav-items";
+import { Button } from "@/components/ui/button";
+import type { User } from "@/lib/types";
 
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
@@ -21,23 +21,25 @@ export function Brand({ compact = false }: { compact?: boolean }) {
         </span>
       </span>
     </div>
-  )
+  );
 }
 
 function initials(user: User) {
-  const first = user.firstName?.[0] ?? ""
-  const last = user.lastName?.[0] ?? ""
-  return `${first}${last}`.toUpperCase() || user.email.slice(0, 2).toUpperCase()
+  const first = user.firstName?.[0] ?? "";
+  const last = user.lastName?.[0] ?? "";
+  return (
+    `${first}${last}`.toUpperCase() || user.email.slice(0, 2).toUpperCase()
+  );
 }
 
 interface SidebarProps {
-  pathname: string
-  user: User
-  onLogout: () => void
+  pathname: string;
+  user: User;
+  onLogout: () => void;
 }
 
 export function Sidebar({ pathname, user, onLogout }: SidebarProps) {
-  const fullName = `${user.firstName} ${user.lastName}`.trim() || user.email
+  const fullName = `${user.firstName} ${user.lastName}`.trim() || user.email;
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-sidebar-border bg-sidebar lg:flex">
@@ -47,24 +49,12 @@ export function Sidebar({ pathname, user, onLogout }: SidebarProps) {
         </Link>
       </div>
 
-      <div className="px-3 pb-3">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-        >
-          <span className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <Wallet className="size-3.5" />
-            </span>
-            <span className="font-medium">Pribadi</span>
-          </span>
-          <ChevronsUpDown className="size-4 text-muted-foreground" />
-        </button>
-      </div>
-
-      <nav aria-label="Navigasi utama" className="flex-1 space-y-1 overflow-y-auto px-3">
+      <nav
+        aria-label="Navigasi utama"
+        className="flex-1 space-y-1 overflow-y-auto p-3"
+      >
         {NAV_ITEMS.map((item) => {
-          const active = isNavActive(pathname, item.href)
+          const active = isNavActive(pathname, item.href);
           return (
             <Link
               key={item.href}
@@ -80,7 +70,7 @@ export function Sidebar({ pathname, user, onLogout }: SidebarProps) {
               <item.icon className="size-[18px]" />
               {item.label}
             </Link>
-          )
+          );
         })}
       </nav>
 
@@ -91,7 +81,9 @@ export function Sidebar({ pathname, user, onLogout }: SidebarProps) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{fullName}</p>
-            <p className="truncate text-caption text-muted-foreground">{user.email}</p>
+            <p className="truncate text-caption text-muted-foreground">
+              {user.email}
+            </p>
           </div>
           <Button
             variant="ghost"
@@ -115,5 +107,5 @@ export function Sidebar({ pathname, user, onLogout }: SidebarProps) {
         </div>
       </div>
     </aside>
-  )
+  );
 }

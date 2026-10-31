@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { ChevronRight } from "lucide-react"
 import { cn } from "cn"
 
 import type { Bill } from "@/lib/api/types/bill"
@@ -9,6 +10,7 @@ import type { Transaction } from "@/lib/api/types/transaction"
 import type { WalletCredit } from "@/lib/api/types/report"
 import { BILL_STATUS_LABELS } from "@/lib/types"
 import { formatIDR, formatTanggal } from "@/lib/format"
+import { utilizationBand } from "@/lib/wallet"
 import { CategoryIcon } from "@/components/category-icon"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -251,9 +253,17 @@ export function BudgetProgress({ budgets }: { budgets: Budget[] }) {
 }
 
 function utilizationTone(value: number): string {
-  if (value >= 85) return "bg-destructive"
-  if (value >= 60) return "bg-warning"
+  const band = utilizationBand(value)
+  if (band === "kritis") return "bg-destructive"
+  if (band === "waspada") return "bg-warning"
   return "bg-primary"
+}
+
+function utilizationBadge(value: number): string {
+  const band = utilizationBand(value)
+  if (band === "kritis") return "bg-destructive/10 text-destructive"
+  if (band === "waspada") return "bg-warning/15 text-[#8a5a00]"
+  return "bg-success/10 text-success"
 }
 
 export function CreditUtilization({ accounts }: { accounts: WalletCredit[] }) {
@@ -280,7 +290,11 @@ export function CreditUtilization({ accounts }: { accounts: WalletCredit[] }) {
           </p>
         ) : (
           accounts.map((account) => (
-            <div key={account.walletId} className="rounded-xl border border-border p-2.5">
+            <Link
+              key={account.walletId}
+              href={`/accounts/${account.walletId}`}
+              className="block rounded-xl border border-border p-2.5 transition-colors hover:border-primary/40 hover:bg-muted/40"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{account.name}</p>
@@ -291,11 +305,7 @@ export function CreditUtilization({ accounts }: { accounts: WalletCredit[] }) {
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                    account.utilization >= 85
-                      ? "bg-destructive/10 text-destructive"
-                      : account.utilization >= 60
-                        ? "bg-warning/15 text-[#8a5a00]"
-                        : "bg-success/10 text-success",
+                    utilizationBadge(account.utilization),
                   )}
                 >
                   {account.utilization.toFixed(1)}% terpakai
@@ -309,9 +319,12 @@ export function CreditUtilization({ accounts }: { accounts: WalletCredit[] }) {
               </div>
               <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
                 <span className="num">Terpakai {formatIDR(account.used)}</span>
-                <span className="num">Sisa {formatIDR(account.available)}</span>
+                <span className="flex items-center gap-0.5">
+                  <span className="num">Sisa {formatIDR(account.available)}</span>
+                  <ChevronRight className="size-3 text-primary" />
+                </span>
               </div>
-            </div>
+            </Link>
           ))
         )}
       </CardContent>

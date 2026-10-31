@@ -49,4 +49,30 @@ export const transactionsApi = {
   summary(filter: { from?: string; to?: string } = {}) {
     return request<TransactionSummary>(`/transactions/summary${toQuery(filter)}`)
   },
+
+  async listAll(
+    filter: TransactionFilter = {},
+    options: { pageSize?: number; maxPages?: number } = {},
+  ) {
+    const pageSize = options.pageSize ?? 100
+    const maxPages = options.maxPages ?? 20
+    const items: Transaction[] = []
+    let page = 1
+    let totalPages = 1
+
+    do {
+      const result = await request<Paginated<Transaction>>(
+        `/transactions${toQuery({
+          ...filter,
+          page,
+          limit: pageSize,
+        } as Record<string, string | number | undefined>)}`,
+      )
+      items.push(...result.items)
+      totalPages = result.meta.totalPages
+      page += 1
+    } while (page <= totalPages && page <= maxPages)
+
+    return { items, truncated: totalPages > maxPages }
+  },
 }
