@@ -3,9 +3,10 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bell } from "lucide-react"
+import { Bell, LogOut } from "lucide-react"
 
 import { Brand } from "@/components/layout/sidebar"
+import { Button } from "@/components/ui/button"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Topbar } from "@/components/layout/topbar"
@@ -61,6 +62,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Bell className="size-5" />
           </button>
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            className="rounded-xl"
+            aria-label="Keluar"
+            title="Keluar"
+            onClick={logout}
+          >
+            <LogOut className="size-5" />
+          </Button>
           <Link
             href="/profile"
             aria-label="Buka profil"
