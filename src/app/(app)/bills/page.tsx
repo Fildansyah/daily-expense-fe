@@ -5,11 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   CheckCircle2,
+  Clock,
   Download,
   MoreHorizontal,
   Plus,
   ReceiptText,
   Search,
+  SlidersHorizontal,
   Wallet,
 } from "lucide-react";
 import { cn } from "cn";
@@ -124,6 +126,7 @@ function BillsView() {
   const [editing, setEditing] = useState<Bill | null>(null);
   const [payBill, setPayBill] = useState<Bill | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Bill | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const debouncedQuery = useDebounced(query);
   const urlCreate = searchParams.get("form") === "bill";
@@ -317,31 +320,101 @@ function BillsView() {
   const lastRow = meta ? Math.min(meta.page * meta.limit, meta.total) : 0;
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Tagihan & Utang"
-        description="Pantau tagihan kredit, cicilan, dan utang bulanan tanpa terlewat."
-        actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() =>
-                exportBillsCSV(bills, `${period.year}-${period.month}`)
-              }
-              disabled={bills.length === 0}
-            >
-              <Download className="size-4" />
-              Ekspor
-            </Button>
-            <Button onClick={() => setFormOpen(true)}>
-              <Plus className="size-4" />
-              Catat tagihan
-            </Button>
-          </>
-        }
-      />
+    <div className="space-y-3 md:space-y-4">
+      <div className="hidden md:block">
+        <PageHeader
+          title="Tagihan & Utang"
+          description="Pantau tagihan kredit, cicilan, dan utang bulanan tanpa terlewat."
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  exportBillsCSV(bills, `${period.year}-${period.month}`)
+                }
+                disabled={bills.length === 0}
+              >
+                <Download className="size-4" />
+                Ekspor
+              </Button>
+              <Button onClick={() => setFormOpen(true)}>
+                <Plus className="size-4" />
+                Catat tagihan
+              </Button>
+            </>
+          }
+        />
+      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <Card className="md:hidden">
+        <CardContent className="space-y-3 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Kewajiban Rutin</p>
+              <p className="text-[10px] text-muted-foreground">
+                Ringkasan tagihan periode ini
+              </p>
+            </div>
+            <PeriodFilter
+              value={period}
+              onChange={(value) => changePeriod(value)}
+              className="h-8 w-auto shrink-0 rounded-full px-2.5 text-[11px]"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 divide-x divide-border">
+            <div className="pr-2">
+              <p className="text-[10px] text-muted-foreground">Total Tagihan</p>
+              <p className="num mt-0.5 truncate text-xs font-semibold">
+                {formatIDR(summary?.total ?? 0)}
+              </p>
+              <p className="text-[9px] text-muted-foreground">
+                {allCount} tagihan aktif
+              </p>
+            </div>
+            <div className="px-2">
+              <p className="text-[10px] text-muted-foreground">Terbayar</p>
+              <p className="num mt-0.5 truncate text-xs font-semibold text-success">
+                {formatIDR(summary?.paid ?? 0)}
+              </p>
+              <p className="text-[9px] text-muted-foreground">
+                {statusCounts.lunas} lunas
+              </p>
+            </div>
+            <div className="pl-2">
+              <p className="text-[10px] text-muted-foreground">Sisa</p>
+              <p className="num mt-0.5 truncate text-xs font-semibold text-warning">
+                {formatIDR(summary?.remaining ?? 0)}
+              </p>
+              <p className="text-[9px] text-muted-foreground">
+                {statusCounts.belum_bayar + statusCounts.sebagian} menunggu
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-2 text-[10px]">
+              <span className="truncate font-medium">
+                Bulan ini: {formatIDR(summary?.total ?? 0)}
+              </span>
+              <span className="num shrink-0 text-muted-foreground">
+                {paidPercentage}%
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${Math.min(100, paidPercentage)}%` }}
+              />
+            </div>
+            <p className="mt-1 text-[9px] text-muted-foreground">
+              Tagihan terbayar dari total periode berjalan
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Total Tagihan"
           value={summary?.total ?? 0}
@@ -372,31 +445,51 @@ function BillsView() {
         />
       </div>
 
-      <Card>
-        <CardContent className="space-y-3 p-3 sm:p-4">
-          <div className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-card p-1">
-            {TABS.map((item) => (
-              <button
-                key={item.value || "all"}
-                type="button"
-                onClick={() => changeTab(item.value)}
-                aria-pressed={tab === item.value}
-                className={cn(
-                  "min-h-7 rounded-lg px-2.5 text-caption transition-colors",
-                  tab === item.value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {item.label}{" "}
-                <span className="text-[10px] opacity-75">
-                  {countFor(item.value)}
-                </span>
-              </button>
-            ))}
+      <Card className="bg-transparent py-0 ring-0 md:bg-card md:py-4 md:ring-1">
+        <CardContent className="space-y-3 p-0 md:p-4">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 items-center gap-1 overflow-x-auto md:flex-wrap md:overflow-visible md:rounded-xl md:border md:border-border md:bg-card md:p-1">
+              {TABS.map((item) => (
+                <button
+                  key={item.value || "all"}
+                  type="button"
+                  onClick={() => changeTab(item.value)}
+                  aria-pressed={tab === item.value}
+                  className={cn(
+                    "min-h-7 shrink-0 rounded-full border px-3 text-[11px] transition-colors md:rounded-lg md:border-0 md:px-2.5 md:text-caption",
+                    tab === item.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground md:bg-transparent",
+                  )}
+                >
+                  {item.label}{" "}
+                  <span className="text-[10px] opacity-75">
+                    {countFor(item.value)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Filter tagihan"
+              aria-expanded={mobileFiltersOpen}
+              onClick={() => setMobileFiltersOpen((value) => !value)}
+              className={cn(
+                "shrink-0 md:hidden",
+                mobileFiltersOpen && "border-primary text-primary",
+              )}
+            >
+              <SlidersHorizontal className="size-4" />
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4",
+              !mobileFiltersOpen && "hidden md:grid",
+            )}
+          >
             <div className="relative">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -425,10 +518,12 @@ function BillsView() {
                 ))}
               </SelectContent>
             </Select>
-            <PeriodFilter
-              value={period}
-              onChange={(value) => changePeriod(value)}
-            />
+            <div className="hidden md:block">
+              <PeriodFilter
+                value={period}
+                onChange={(value) => changePeriod(value)}
+              />
+            </div>
             <Button
               variant="ghost"
               className="h-9 justify-start"
@@ -901,64 +996,116 @@ function BillMobileCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const progress =
-    bill.amount > 0 ? Math.min(100, (bill.paidAmount / bill.amount) * 100) : 0;
+  const overdue = bill.isOverdue;
+  const paid = bill.status === "lunas";
+  const dueSoon = !overdue && !paid && bill.daysUntilDue <= 3;
 
   return (
-    <Card>
+    <Card
+      className={cn(
+        "gap-0 border-l-4 py-0",
+        paid
+          ? "border-l-success"
+          : overdue
+            ? "border-l-destructive"
+            : dueSoon
+              ? "border-l-warning"
+              : "border-l-primary",
+      )}
+    >
       <CardContent className="space-y-2 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{bill.lender.name}</p>
-            <p className="truncate text-caption text-muted-foreground">
-              {bill.deskripsi || "Tagihan"}
-            </p>
-          </div>
+        <div className="flex items-start gap-2.5">
           <span
             className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
-              statusClass(bill),
+              "flex size-9 shrink-0 items-center justify-center rounded-xl",
+              paid
+                ? "bg-success/10 text-success"
+                : overdue
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-warning/15 text-[#8a5a00]",
             )}
           >
-            {bill.isOverdue ? "Terlambat" : BILL_STATUS_LABELS[bill.status]}
+            <ReceiptText className="size-4" />
           </span>
-        </div>
-        <div className="flex items-center justify-between text-caption">
-          <span className="text-muted-foreground">
-            Jatuh tempo {formatTanggal(bill.dueDate)}
-          </span>
-          <span className="font-medium">{dueLabel(bill)}</span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn(
-              "h-full rounded-full",
-              bill.isOverdue
-                ? "bg-destructive"
-                : bill.status === "lunas"
-                  ? "bg-success"
-                  : "bg-primary",
-            )}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <p className="num text-caption text-muted-foreground">
-            Sisa {formatIDR(bill.remainingAmount)}
-          </p>
-          <div className="flex gap-1">
-            {bill.status !== "lunas" ? (
-              <Button size="sm" onClick={onPay}>
-                Bayar
-              </Button>
-            ) : null}
-            <Button size="sm" variant="outline" onClick={onEdit}>
-              Ubah
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onDelete}>
-              Hapus
-            </Button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{bill.lender.name}</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {bill.deskripsi || "Tagihan"}
+              {bill.installmentTotal
+                ? ` · Cicilan ${bill.installmentIndex ?? 1}/${bill.installmentTotal}`
+                : ""}
+            </p>
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Clock className="size-3 shrink-0" />
+              Jatuh tempo {formatTanggal(bill.dueDate)}
+            </p>
           </div>
+          <div className="shrink-0 text-right">
+            <p className="num text-sm font-semibold whitespace-nowrap">
+              {formatIDR(bill.remainingAmount)}
+            </p>
+            <span
+              className={cn(
+                "mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-medium",
+                statusClass(bill),
+              )}
+            >
+              {overdue ? "Terlambat" : BILL_STATUS_LABELS[bill.status]}
+            </span>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Aksi tagihan"
+                  className="shrink-0"
+                />
+              }
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit}>Ubah tagihan</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                Hapus tagihan
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {overdue ? (
+          <p className="rounded-lg bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+            Segera selesaikan sebelum denda
+          </p>
+        ) : dueSoon ? (
+          <p className="rounded-lg bg-warning/15 px-2 py-1 text-[10px] font-medium text-[#8a5a00]">
+            Segera selesaikan sebelum jatuh tempo
+          </p>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-[10px] text-muted-foreground">
+            {bill.wallet?.name ?? "—"}
+          </p>
+          {paid ? (
+            <span className="text-[10px] font-medium text-success">
+              Sudah lunas
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              variant={dueSoon || overdue ? "default" : "outline"}
+              className={cn(
+                "h-8 rounded-lg px-3",
+                overdue && "bg-destructive text-white hover:bg-destructive/90",
+              )}
+              onClick={onPay}
+            >
+              {overdue ? "Bayar Sekarang" : "Bayar"}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

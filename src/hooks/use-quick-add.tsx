@@ -1,8 +1,15 @@
-"use client"
+"use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-import { QuickAddDialog } from "@/components/quick-add/quick-add-dialog"
+import { QuickAddDialog } from "@/components/quick-add/quick-add-dialog";
 
 export type QuickAddKind =
   | "transaction"
@@ -10,47 +17,47 @@ export type QuickAddKind =
   | "account"
   | "budget"
   | "category"
-  | "transfer"
+  | "transfer";
 
 interface QuickAddContextValue {
-  isOpen: boolean
-  initialKind: QuickAddKind | null
-  open: (kind?: QuickAddKind) => void
-  close: () => void
+  isOpen: boolean;
+  initialKind: QuickAddKind | null;
+  open: (kind?: QuickAddKind) => void;
+  close: () => void;
 }
 
-const QuickAddContext = createContext<QuickAddContextValue | null>(null)
+const QuickAddContext = createContext<QuickAddContextValue | null>(null);
 
 export function QuickAddProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [initialKind, setInitialKind] = useState<QuickAddKind | null>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const [initialKind, setInitialKind] = useState<QuickAddKind | null>(null);
 
   const open = useCallback((kind?: QuickAddKind) => {
-    setInitialKind(kind ?? null)
-    setIsOpen(true)
-  }, [])
+    setInitialKind(kind ?? null);
+    setIsOpen(true);
+  }, []);
 
   const close = useCallback(() => {
-    setIsOpen(false)
-  }, [])
+    setIsOpen(false);
+  }, []);
 
   const value = useMemo(
     () => ({ isOpen, initialKind, open, close }),
     [isOpen, initialKind, open, close],
-  )
+  );
 
   return (
     <QuickAddContext.Provider value={value}>
       {children}
       <QuickAddDialog />
     </QuickAddContext.Provider>
-  )
+  );
 }
 
 export function useQuickAdd(): QuickAddContextValue {
-  const context = useContext(QuickAddContext)
+  const context = useContext(QuickAddContext);
   if (!context) {
-    throw new Error("useQuickAdd harus dipakai di dalam <QuickAddProvider>")
+    throw new Error("useQuickAdd harus dipakai di dalam <QuickAddProvider>");
   }
-  return context
+  return context;
 }

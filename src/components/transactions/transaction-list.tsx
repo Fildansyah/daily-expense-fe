@@ -44,6 +44,43 @@ function groupDateLabel(iso: string): string {
   })
 }
 
+function groupRelativeDateLabel(iso: string): string {
+  const date = fromISODate(iso)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diff = Math.round((today.getTime() - date.getTime()) / 86_400_000)
+
+  if (diff === 0) return `Hari Ini — ${groupDateLabel(iso)}`
+  if (diff === 1) return `Kemarin — ${groupDateLabel(iso)}`
+  return groupDateLabel(iso)
+}
+
+function transactionTime(iso: string): string | null {
+  if (!iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+}
+
+function transactionTitle(transaction: Transaction): string {
+  if (transaction.type === "TRANSFER") return "Transfer"
+  return transaction.memo || transaction.category?.name || "Transaksi"
+}
+
+function transactionMeta(transaction: Transaction): string {
+  if (transaction.type === "TRANSFER") {
+    return `Transfer • ${transaction.wallet?.name ?? "—"} → ${transaction.transferWallet?.name ?? "—"}`
+  }
+
+  return [
+    transaction.category?.name ?? "Tanpa kategori",
+    transaction.wallet?.name,
+    transactionTime(transaction.createdAt),
+  ]
+    .filter(Boolean)
+    .join(" • ")
+}
+
 function amountLabel(transaction: Transaction): string {
   const prefix =
     transaction.type === "INCOME" ? "+" : transaction.type === "EXPENSE" ? "−" : ""
@@ -321,57 +358,103 @@ export function TransactionList({
       </div>
 
       <div className="space-y-3 md:hidden">
-        {groups.map(([date, items]) => (
-          <div key={date} className="space-y-2">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-caption font-medium text-muted-foreground">
-                {groupDateLabel(date)} · {items.length}
-              </span>
-            </div>
+        {groups.map(([date, items]) => {
+          const expense = items
+            .filter((item) => item.type === "EXPENSE")
+            .reduce((total, item) => total + item.amount, 0)
+          const income = items
+            .filter((item) => item.type === "INCOME")
+            .reduce((total, item) => total + item.amount, 0)
+          const total = expense > 0 ? expense : income
 
-            {items.map((transaction) => (
-              <div
-                key={transaction.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onEdit(transaction)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    onEdit(transaction)
-                  }
-                }}
-                className="flex w-full items-center gap-2 rounded-2xl border border-border bg-card p-3 text-left focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-              >
-                <input
-                  type="checkbox"
-                  aria-label={`Pilih ${transaction.memo || "transaksi"}`}
-                  checked={selected.has(transaction.id)}
-                  onClick={(event) => event.stopPropagation()}
-                  onChange={() => onToggle(transaction.id)}
-                  className="size-4 shrink-0 accent-[var(--primary)]"
-                />
-                <CategoryCell
-                  transaction={transaction}
-                  categories={categories}
-                />
-                <div className="ml-auto text-right">
-                  <p
-                    className={cn(
-                      "num text-sm font-medium",
-                      amountClass(transaction),
-                    )}
-                  >
-                    {amountLabel(transaction)}
-                  </p>
-                  <p className="text-caption text-muted-foreground">
-                    {transaction.wallet?.name ?? "—"}
-                  </p>
-                </div>
+          return (
+            <section key={date} className="space-y-2">
+              <div className="flex items-center justify-between gap-2 px-1">
+                <p className="min-w-0 truncate text-[11px] font-semibold text-muted-foreground">
+                  {groupRelativeDateLabel(date)}
+                </p>
+                <p className="num shrink-0 text-[11px] font-semibold">
+                  {formatIDR(total)}
+                </p>
               </div>
-            ))}
-          </div>
-        ))}
+
+              <ul className="space-y-2">
+                {items.map((transaction) => {
+                  const time = transactionTime(transaction.createdAt)
+                  const prefix =
+                    transaction.type === "INCOME"
+                      ? "+"
+                      : transaction.type === "EXPENSE"
+                        ? "−"
+                        : ""
+
+                  return (
+                    <li
+                      key={transaction.id}
+                      className="flex items-center gap-1 rounded-xl border border-border bg-card p-3"
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => onEdit(transaction)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            onEdit(transaction)
+                          }
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                      >
+                        {transaction.type === "TRANSFER" ? (
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-info/10 text-info">
+                            <ArrowLeftRight className="size-4" />
+                          </span>
+                        ) : (
+                          <CategoryIcon
+                            icon={transaction.category?.icon}
+                            color={transaction.category?.bgColor}
+                            size="md"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {transactionTitle(transaction)}
+                          </p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {transactionMeta(transaction)}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p
+                            className={cn(
+                              "num text-sm font-semibold whitespace-nowrap",
+                              transaction.type === "EXPENSE"
+                                ? "text-destructive"
+                                : amountClass(transaction),
+                            )}
+                          >
+                            {prefix}
+                            {formatIDR(transaction.amount)}
+                          </p>
+                          {time ? (
+                            <p className="text-[10px] text-muted-foreground">
+                              {time}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <RowActions
+                        transaction={transaction}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                      />
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )
+        })}
       </div>
     </div>
   )

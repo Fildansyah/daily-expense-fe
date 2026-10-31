@@ -10,6 +10,7 @@ import {
   Loader2,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react"
@@ -112,6 +113,7 @@ function TransactionsView() {
   const categoryId = searchParams.get("categoryId") ?? ""
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<
     { kind: "one"; transaction: Transaction } | { kind: "bulk" } | null
   >(null)
@@ -338,38 +340,78 @@ function TransactionsView() {
   const deleting = deleteMutation.isPending || bulkMutation.isPending
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Transaksi"
-        description={
-          meta
-            ? `${meta.total} transaksi tercatat tahun ini`
-            : "Semua pemasukan, pengeluaran, dan transfer."
-        }
-        actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() =>
-                exportTransactionsCSV(
-                  items,
-                  `${activeFrom}_${activeTo}`,
-                )
-              }
-              disabled={items.length === 0}
-            >
-              <Download className="size-4" />
-              Ekspor CSV
-            </Button>
-            <Button onClick={openCreate}>
-              <Plus className="size-4" />
-              Tambah transaksi
-            </Button>
-          </>
-        }
-      />
+    <div className="space-y-3 md:space-y-5">
+      <div className="hidden md:block">
+        <PageHeader
+          title="Transaksi"
+          description={
+            meta
+              ? `${meta.total} transaksi tercatat tahun ini`
+              : "Semua pemasukan, pengeluaran, dan transfer."
+          }
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  exportTransactionsCSV(
+                    items,
+                    `${activeFrom}_${activeTo}`,
+                  )
+                }
+                disabled={items.length === 0}
+              >
+                <Download className="size-4" />
+                Ekspor CSV
+              </Button>
+              <Button onClick={openCreate}>
+                <Plus className="size-4" />
+                Tambah transaksi
+              </Button>
+            </>
+          }
+        />
+      </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="space-y-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <DateRangeFilter
+            from={activeFrom}
+            to={activeTo}
+            onChange={(range) => changeRange(range)}
+            className="h-8 flex-1 rounded-full px-3 text-[11px]"
+          />
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5">
+            <span className="text-[11px] text-muted-foreground">Net</span>
+            <span
+              className={cn(
+                "num text-[11px] font-semibold",
+                (summary?.net ?? 0) >= 0 ? "text-success" : "text-destructive",
+              )}
+            >
+              {(summary?.net ?? 0) < 0 ? "−" : "+"}
+              {formatIDR(Math.abs(summary?.net ?? 0))}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-border bg-card p-3">
+            <p className="text-[10px] text-muted-foreground">Pemasukan</p>
+            <p className="num mt-0.5 truncate text-sm font-semibold text-success">
+              +{formatIDR(summary?.income ?? 0)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-3">
+            <p className="text-[10px] text-muted-foreground">Pengeluaran</p>
+            <p className="num mt-0.5 truncate text-sm font-semibold text-destructive">
+              −{formatIDR(summary?.expense ?? 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden gap-3 md:grid md:grid-cols-3">
         <StatCard
           label="Pengeluaran bulan ini"
           value={summary?.expense ?? 0}
@@ -393,39 +435,64 @@ function TransactionsView() {
         />
       </div>
 
-      <Card>
-        <CardContent className="space-y-3 p-3 sm:p-4">
+      <Card className="bg-transparent py-0 ring-0 md:bg-card md:py-4 md:ring-1">
+        <CardContent className="space-y-3 p-0 md:p-4">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => changeQuery(event.target.value)}
-                placeholder="Cari catatan, kategori, atau akun…"
-                className="h-9 pl-8"
-                aria-label="Cari transaksi"
-              />
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(event) => changeQuery(event.target.value)}
+                  placeholder="Cari catatan, kategori, atau akun…"
+                  className="h-9 pl-8"
+                  aria-label="Cari transaksi"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Filter transaksi"
+                aria-expanded={mobileFiltersOpen}
+                onClick={() => setMobileFiltersOpen((value) => !value)}
+                className={cn(
+                  "shrink-0 md:hidden",
+                  mobileFiltersOpen && "border-primary text-primary",
+                )}
+              >
+                <SlidersHorizontal className="size-4" />
+              </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-card p-1">
+            <div className="flex items-center gap-1 overflow-x-auto md:flex-wrap md:overflow-visible md:rounded-xl md:border md:border-border md:bg-card md:p-1">
               {TYPE_OPTIONS.map((option) => (
                 <button
                   key={option.value || "all"}
                   type="button"
                   onClick={() => changeType(option.value)}
                   className={cn(
-                    "min-h-7 rounded-lg px-2.5 text-label transition-colors",
+                    "min-h-7 shrink-0 rounded-full border px-3 text-[11px] transition-colors md:rounded-lg md:border-0 md:px-2.5 md:text-label",
                     type === option.value
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground md:bg-transparent",
                   )}
                 >
                   {option.label}
+                  {option.value === "" && meta ? (
+                    <span className="ml-1 text-[10px] opacity-75">
+                      ({meta.total})
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4",
+              !mobileFiltersOpen && "hidden md:grid",
+            )}
+          >
             <Select
               items={walletItems}
               value={walletId}
@@ -462,11 +529,13 @@ function TransactionsView() {
               </SelectContent>
             </Select>
 
-            <DateRangeFilter
-              from={activeFrom}
-              to={activeTo}
-              onChange={(range) => changeRange(range)}
-            />
+            <div className="hidden md:block">
+              <DateRangeFilter
+                from={activeFrom}
+                to={activeTo}
+                onChange={(range) => changeRange(range)}
+              />
+            </div>
 
             <Button
               variant="ghost"

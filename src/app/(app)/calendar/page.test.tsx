@@ -79,12 +79,12 @@ vi.mock("@/hooks/use-reports", () => ({
 import CalendarPage from "./page"
 
 describe("CalendarPage", () => {
-  it("berpindah ke tampilan minggu tanpa error", () => {
+  it("berpindah ke tampilan daftar tanpa error", () => {
     render(<CalendarPage />)
 
-    fireEvent.click(screen.getByRole("button", { name: "Minggu" }))
+    fireEvent.click(screen.getByRole("button", { name: "Daftar" }))
 
-    expect(screen.getByRole("button", { name: "Minggu" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Daftar" })).toHaveAttribute(
       "aria-pressed",
       "true",
     )

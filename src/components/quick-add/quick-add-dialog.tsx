@@ -1,32 +1,34 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/navigation";
 import {
   ArrowLeftRight,
   CalendarClock,
+  CalendarDays,
   ChartColumn,
+  ChevronRight,
   Plus,
   ReceiptText,
   Tags,
   Wallet,
   type LucideIcon,
-} from "lucide-react"
+} from "lucide-react";
 
-import { useQuickAdd, type QuickAddKind } from "@/hooks/use-quick-add"
+import { useQuickAdd, type QuickAddKind } from "@/hooks/use-quick-add";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 interface QuickAddAction {
-  kind: QuickAddKind
-  label: string
-  description: string
-  href: string
-  icon: LucideIcon
+  kind: QuickAddKind;
+  label: string;
+  description: string;
+  href: string;
+  icon: LucideIcon;
 }
 
 const ACTIONS: QuickAddAction[] = [
@@ -72,15 +74,15 @@ const ACTIONS: QuickAddAction[] = [
     href: "/accounts?form=transfer",
     icon: ArrowLeftRight,
   },
-]
+];
 
 export function QuickAddDialog() {
-  const router = useRouter()
-  const { isOpen, initialKind, close } = useQuickAdd()
+  const router = useRouter();
+  const { isOpen, initialKind, close } = useQuickAdd();
 
   function select(action: QuickAddAction) {
-    close()
-    router.push(action.href)
+    close();
+    router.push(action.href);
   }
 
   return (
@@ -111,11 +113,33 @@ export function QuickAddDialog() {
             </button>
           ))}
         </div>
+        <div className="space-y-2">
+          <p className="text-caption text-muted-foreground">Buka halaman</p>
+          <button
+            type="button"
+            onClick={() => {
+              close();
+              router.push("/calendar");
+            }}
+            className="flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+              <CalendarDays className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">Kalender</span>
+              <span className="block text-caption text-muted-foreground">
+                Lihat jadwal transaksi &amp; tagihan
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+        </div>
         <p className="flex items-center gap-2 text-caption text-muted-foreground">
           <CalendarClock className="size-3.5" />
           Form lengkap tersedia bertahap. Shortcut mengarah ke halaman terkait.
         </p>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

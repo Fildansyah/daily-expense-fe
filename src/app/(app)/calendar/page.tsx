@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react"
 import {
-  ChevronLeft,
-  ChevronRight,
+  CalendarDays,
   Plus,
   ReceiptText,
   TrendingDown,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 
+import type { Bill } from "@/lib/api/types/bill"
 import type { CalendarDay } from "@/lib/api/types/report"
 import {
   formatIDR,
@@ -23,6 +23,7 @@ import {
 } from "@/lib/format"
 import { useCalendar } from "@/hooks/use-reports"
 import { PageHeader } from "@/components/layout/page-header"
+import { BillPaymentDialog } from "@/components/bills/bill-payment-dialog"
 import { CalendarGrid } from "@/components/calendar/calendar-grid"
 import { DayPanel } from "@/components/calendar/day-panel"
 import { TransactionFormSheet } from "@/components/transactions/transaction-form-sheet"
@@ -51,6 +52,7 @@ export default function CalendarPage() {
   })
   const [selected, setSelected] = useState(() => toISODate(new Date()))
   const [formOpen, setFormOpen] = useState(false)
+  const [payBill, setPayBill] = useState<Bill | null>(null)
 
   const range = useMemo(() => {
     if (mode === "week") return weekRange(selected)
@@ -76,6 +78,7 @@ export default function CalendarPage() {
   const overdueCount = allBills.filter((bill) => bill.isOverdue).length
   const billsDue = data?.billsDue ?? 0
   const summary = data?.summary
+  const net = summary?.net ?? 0
 
   const label =
     mode === "month"
@@ -127,86 +130,67 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Kalender Finansial"
-        description="Jadwal uang masuk, komitmen cicilan, dan jatuh tempo tagihan."
-        actions={
-          <>
-            <div className="hidden items-center gap-3 text-caption text-muted-foreground md:flex">
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-full bg-success" />
-                Pemasukan
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-full bg-destructive" />
-                Pengeluaran
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-full bg-warning" />
-                Tagihan tempo
-              </span>
-            </div>
+    <div className="space-y-3 md:space-y-4">
+      <div className="hidden md:block">
+        <PageHeader
+          title="Kalender Finansial"
+          description="Jadwal uang masuk, komitmen cicilan, dan jatuh tempo tagihan."
+          actions={
             <Button onClick={() => setFormOpen(true)}>
               <Plus className="size-4" />
               Catat Transaksi
             </Button>
-          </>
-        }
-      />
+          }
+        />
+      </div>
 
-      <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-2 p-2">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Periode sebelumnya"
-              onClick={() => shift(-1)}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <span className="min-w-44 text-center text-sm font-semibold">{label}</span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Periode berikutnya"
-              onClick={() => shift(1)}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          className="h-8 shrink-0 gap-1.5 rounded-full bg-card px-3"
+          onClick={goToday}
+        >
+          <CalendarDays className="size-3.5" />
+          <span className="text-[11px] font-medium">Hari Ini</span>
+        </Button>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={goToday}>
-              Hari ini
-            </Button>
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
-              {(["month", "week"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => changeMode(option)}
-                  aria-pressed={mode === option}
-                  className={cn(
-                    "min-h-7 rounded-lg px-3 text-label transition-colors",
-                    mode === option
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {option === "month" ? "Bulan" : "Minggu"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full border border-border bg-card px-3 py-1.5">
+          <span className="text-[11px] text-muted-foreground">Net</span>
+          <span
+            className={cn(
+              "num truncate text-[11px] font-semibold",
+              net >= 0 ? "text-success" : "text-destructive",
+            )}
+          >
+            {net < 0 ? "−" : "+"}
+            {formatIDR(Math.abs(net))}
+          </span>
+        </div>
+
+        <div className="flex shrink-0 items-center rounded-xl bg-muted p-1">
+          {(["month", "week"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => changeMode(option)}
+              aria-pressed={mode === option}
+              className={cn(
+                "min-h-7 rounded-lg px-2.5 text-[11px] font-medium transition-colors",
+                mode === option
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground",
+              )}
+            >
+              {option === "month" ? "Kalender" : "Daftar"}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div>
           {calendarQuery.isLoading ? (
-            <Skeleton className="h-[560px] w-full rounded-2xl" />
+            <Skeleton className="h-[420px] w-full rounded-2xl md:h-[560px]" />
           ) : calendarQuery.isError ? (
             <Card>
               <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
@@ -223,8 +207,11 @@ export default function CalendarPage() {
               mode={mode}
               cursor={cursor}
               selected={selected}
+              label={label}
               days={days}
               onSelect={selectDate}
+              onPrev={() => shift(-1)}
+              onNext={() => shift(1)}
             />
           )}
         </div>
@@ -234,10 +221,11 @@ export default function CalendarPage() {
           day={selectedDay}
           loading={calendarQuery.isLoading}
           onAddTransaction={() => setFormOpen(true)}
+          onPay={setPayBill}
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="hidden grid-cols-2 gap-3 md:grid xl:grid-cols-4">
         <SummaryCard
           label="Total pemasukan"
           value={summary?.income ?? 0}
@@ -274,6 +262,17 @@ export default function CalendarPage() {
           initialDate={selected}
           onOpenChange={(open) => {
             if (!open) setFormOpen(false)
+          }}
+        />
+      ) : null}
+
+      {payBill ? (
+        <BillPaymentDialog
+          key={payBill.id}
+          open
+          bill={payBill}
+          onOpenChange={(open) => {
+            if (!open) setPayBill(null)
           }}
         />
       ) : null}

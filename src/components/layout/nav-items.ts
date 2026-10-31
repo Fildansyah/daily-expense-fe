@@ -8,12 +8,12 @@ import {
   Tags,
   Wallet,
   type LucideIcon,
-} from "lucide-react"
+} from "lucide-react";
 
 export interface NavItem {
-  href: string
-  label: string
-  icon: LucideIcon
+  href: string;
+  label: string;
+  icon: LucideIcon;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -25,21 +25,21 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/budgets", label: "Anggaran", icon: PiggyBank },
   { href: "/categories", label: "Kategori", icon: Tags },
   { href: "/reports", label: "Laporan", icon: ChartColumn },
-]
+];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transaksi", icon: ArrowLeftRight },
   { href: "/bills", label: "Tagihan", icon: ReceiptText },
   { href: "/reports", label: "Laporan", icon: ChartColumn },
-]
+];
 
 export function findNavLabel(pathname: string): string | undefined {
   return NAV_ITEMS.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-  )?.label
+  )?.label;
 }
 
 export function isNavActive(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`)
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

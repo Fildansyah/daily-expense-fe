@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Plus } from "lucide-react"
-import { cn } from "cn"
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { cn } from "cn";
 
-import { MOBILE_NAV_ITEMS, isNavActive } from "@/components/layout/nav-items"
-import { useQuickAdd } from "@/hooks/use-quick-add"
+import { MOBILE_NAV_ITEMS, isNavActive } from "@/components/layout/nav-items";
+import { useQuickAdd } from "@/hooks/use-quick-add";
 
 export function MobileNav({ pathname }: { pathname: string }) {
-  const { open } = useQuickAdd()
-  const [first, second, third, fourth] = MOBILE_NAV_ITEMS
+  const { open } = useQuickAdd();
+  const [first, second, third, fourth] = MOBILE_NAV_ITEMS;
 
   return (
     <nav
@@ -37,17 +37,17 @@ export function MobileNav({ pathname }: { pathname: string }) {
         ))}
       </div>
     </nav>
-  )
+  );
 }
 
 function MobileNavItem({
   item,
   pathname,
 }: {
-  item: (typeof MOBILE_NAV_ITEMS)[number]
-  pathname: string
+  item: (typeof MOBILE_NAV_ITEMS)[number];
+  pathname: string;
 }) {
-  const active = isNavActive(pathname, item.href)
+  const active = isNavActive(pathname, item.href);
 
   return (
     <Link
@@ -61,5 +61,5 @@ function MobileNavItem({
       <item.icon className="size-5" />
       {item.label}
     </Link>
-  )
+  );
 }
