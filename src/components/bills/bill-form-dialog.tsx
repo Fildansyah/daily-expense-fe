@@ -7,7 +7,7 @@ import { cn } from "cn"
 
 import type { Bill, BillInput } from "@/lib/api/types/bill"
 import { flattenCategories } from "@/lib/categories"
-import { formatIDR, toISODate } from "@/lib/format"
+import { formatIDR, formatNumberInput, toISODate } from "@/lib/format"
 import { useCategoryTree } from "@/hooks/use-categories"
 import {
   useCreateBill,
@@ -213,7 +213,7 @@ export function BillFormDialog({ open, onOpenChange, bill }: BillFormDialogProps
                   Rp
                 </span>
                 <Input
-                  value={amount ? new Intl.NumberFormat("id-ID").format(amountValue) : ""}
+                  value={formatNumberInput(amount)}
                   onChange={(event) =>
                     setAmount(event.target.value.replace(/\D/g, "").slice(0, 15))
                   }
@@ -231,11 +231,7 @@ export function BillFormDialog({ open, onOpenChange, bill }: BillFormDialogProps
                   Rp
                 </span>
                 <Input
-                  value={
-                    paidAmount
-                      ? new Intl.NumberFormat("id-ID").format(paidValue)
-                      : ""
-                  }
+                  value={formatNumberInput(paidAmount)}
                   onChange={(event) =>
                     setPaidAmount(
                       event.target.value.replace(/\D/g, "").slice(0, 15),

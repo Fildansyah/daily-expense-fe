@@ -5,7 +5,7 @@ import { ArrowLeftRight, Loader2, Repeat } from "lucide-react"
 import { toast } from "sonner"
 
 import type { Wallet } from "@/lib/api/types/wallet"
-import { formatIDR, toISODate } from "@/lib/format"
+import { formatIDR, formatNumberInput, toISODate } from "@/lib/format"
 import { useTransfer } from "@/hooks/use-wallets"
 import { Button } from "@/components/ui/button"
 import {
@@ -150,7 +150,7 @@ export function TransferDialog({ open, onOpenChange, wallets }: TransferDialogPr
                 Rp
               </span>
               <Input
-                value={amount ? new Intl.NumberFormat("id-ID").format(value) : ""}
+                value={formatNumberInput(amount)}
                 onChange={(event) =>
                   setAmount(event.target.value.replace(/\D/g, "").slice(0, 15))
                 }

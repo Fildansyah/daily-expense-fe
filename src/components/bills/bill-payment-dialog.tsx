@@ -7,7 +7,7 @@ import { cn } from "cn"
 
 import type { Bill } from "@/lib/api/types/bill"
 import { flattenCategories } from "@/lib/categories"
-import { formatIDR, toISODate } from "@/lib/format"
+import { formatIDR, formatNumberInput, toISODate } from "@/lib/format"
 import { useAddPayment } from "@/hooks/use-bills"
 import { useCategoryTree } from "@/hooks/use-categories"
 import { useWallets } from "@/hooks/use-wallets"
@@ -159,9 +159,7 @@ export function BillPaymentDialog({
                   Rp
                 </span>
                 <input
-                  value={
-                    amount ? new Intl.NumberFormat("id-ID").format(amountValue) : ""
-                  }
+                  value={formatNumberInput(amount)}
                   onChange={(event) =>
                     setAmount(event.target.value.replace(/\D/g, "").slice(0, 15))
                   }

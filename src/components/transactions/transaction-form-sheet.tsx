@@ -7,7 +7,7 @@ import { cn } from "cn"
 
 import type { Category } from "@/lib/api/types/category"
 import type { Transaction, TransactionType } from "@/lib/api/types/transaction"
-import { formatIDR, toISODate } from "@/lib/format"
+import { formatIDR, formatNumberInput, toISODate } from "@/lib/format"
 import {
   useCreateTransaction,
   useUpdateTransaction,
@@ -97,9 +97,7 @@ export function TransactionFormSheet({
 
   const pending = createTransaction.isPending || updateTransaction.isPending
   const amountValue = Number(amount || 0)
-  const displayAmount = amount
-    ? new Intl.NumberFormat("id-ID").format(amountValue)
-    : ""
+  const displayAmount = formatNumberInput(amount)
 
   function changeType(next: TransactionType) {
     if (next !== type) {

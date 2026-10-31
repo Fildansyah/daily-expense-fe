@@ -18,7 +18,7 @@ import {
   overviewStatus,
   shiftMonthKey,
 } from "@/lib/budget"
-import { formatIDR } from "@/lib/format"
+import { formatIDR, formatNumberInput } from "@/lib/format"
 import {
   useCreateBudget,
   useDeleteBudget,
@@ -308,7 +308,7 @@ export function BudgetFormDialog({
                 Rp
               </span>
               <Input
-                value={amount ? new Intl.NumberFormat("id-ID").format(amountValue) : ""}
+                value={formatNumberInput(amount)}
                 onChange={(event) =>
                   setAmount(event.target.value.replace(/\D/g, "").slice(0, 15))
                 }

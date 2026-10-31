@@ -122,3 +122,28 @@ export function punctualityRate(
   const onTime = payments.filter((payment) => payment.paidAt <= payment.dueDate).length
   return Math.round((onTime / payments.length) * 100)
 }
+
+export interface BalanceAdjustment {
+  type: "INCOME" | "EXPENSE"
+  amount: number
+}
+
+export function balanceAdjustment(
+  walletType: string,
+  delta: number,
+): BalanceAdjustment | null {
+  if (Math.abs(delta) < 0.005) return null
+
+  const increasesBalance = delta > 0
+  if (isLiability(walletType)) {
+    return {
+      type: increasesBalance ? "EXPENSE" : "INCOME",
+      amount: Math.abs(delta),
+    }
+  }
+
+  return {
+    type: increasesBalance ? "INCOME" : "EXPENSE",
+    amount: Math.abs(delta),
+  }
+}

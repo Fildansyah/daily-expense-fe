@@ -6,6 +6,12 @@ export function formatIDR(n: number): string {
   }).format(n);
 }
 
+export function formatNumberInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  return new Intl.NumberFormat("id-ID").format(Number(digits));
+}
+
 export function toISODate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
