@@ -104,6 +104,7 @@ export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) 
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Select
+              items={MONTHS}
               value={value.month != null ? String(value.month) : ""}
               onValueChange={(v) =>
                 onChange({
@@ -124,6 +125,10 @@ export function PeriodFilter({ value, onChange, className }: PeriodFilterProps) 
               </SelectContent>
             </Select>
             <Select
+              items={allYears.map((year) => ({
+                label: String(year),
+                value: String(year),
+              }))}
               value={value.year != null ? String(value.year) : ""}
               onValueChange={(v) =>
                 onChange({

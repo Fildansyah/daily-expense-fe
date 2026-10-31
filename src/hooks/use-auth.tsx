@@ -12,13 +12,13 @@ import {
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
 
+import { authApi } from "@/lib/api/auth"
 import {
-  authApi,
+  API_CONFIGURED,
   setAccessToken,
   setUnauthorizedHandler,
-  USE_MOCK,
-} from "@/lib/api"
-import type { RegisterInput, User } from "@/lib/types"
+} from "@/lib/api/client"
+import type { RegisterInput, User } from "@/lib/api/types/user"
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated"
 
@@ -34,15 +34,6 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 const AUTH_CHANNEL = "daily-expense-auth"
 
-// User palsu untuk mode mock — auth dilewati karena tidak ada backend.
-const MOCK_USER: User = {
-  id: "mock-user",
-  createdAt: "",
-  firstName: "Pengguna",
-  lastName: "Mock",
-  email: "mock@local.dev",
-}
-
 function broadcastAuth(message: "login" | "logout") {
   if (typeof window === "undefined" || !("BroadcastChannel" in window)) return
   const channel = new BroadcastChannel(AUTH_CHANNEL)
@@ -51,11 +42,9 @@ function broadcastAuth(message: "login" | "logout") {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() =>
-    USE_MOCK ? MOCK_USER : null,
-  )
-  const [status, setStatus] = useState<AuthStatus>(() =>
-    USE_MOCK ? "authenticated" : "loading",
+  const [user, setUser] = useState<User | null>(null)
+  const [status, setStatus] = useState<AuthStatus>(
+    API_CONFIGURED ? "loading" : "unauthenticated",
   )
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -69,23 +58,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null)
     setUser(null)
     setStatus("unauthenticated")
-    // Jangan biarkan data user sebelumnya tersaji dari cache setelah login user lain.
     queryClient.clear()
   }, [queryClient])
 
-  // Pulihkan sesi saat aplikasi dimuat (mode API).
-  // Access token hanya ada di memori, jadi selalu minta yang baru via cookie refresh.
+  // Pulihkan sesi saat aplikasi dimuat. Access token hanya di memori,
+  // jadi selalu minta yang baru lewat cookie refresh.
   useEffect(() => {
-    if (USE_MOCK) return
+    if (!API_CONFIGURED) {
+      return
+    }
 
     let cancelled = false
 
     authApi
       .refresh()
-      .then((res) => {
+      .then((result) => {
         if (cancelled) return
-        setAccessToken(res.accessToken)
-        applySession(res.user)
+        setAccessToken(result.accessToken)
+        applySession(result.user)
       })
       .catch(() => {
         if (cancelled) return
@@ -99,8 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 401 dari request terautentikasi yang gagal di-refresh.
   useEffect(() => {
-    if (USE_MOCK) return
-
     setUnauthorizedHandler(() => {
       clearSession()
     })
@@ -110,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sinkronisasi login/logout antar tab.
   useEffect(() => {
-    if (USE_MOCK) return
     if (typeof window === "undefined" || !("BroadcastChannel" in window)) return
 
     const channel = new BroadcastChannel(AUTH_CHANNEL)
@@ -122,9 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event.data === "login") {
         authApi
           .refresh()
-          .then((res) => {
-            setAccessToken(res.accessToken)
-            applySession(res.user)
+          .then((result) => {
+            setAccessToken(result.accessToken)
+            applySession(result.user)
           })
           .catch(() => {
             /* tab ini akan mencoba lagi saat ada request */
@@ -137,15 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      if (USE_MOCK) {
-        applySession(MOCK_USER)
-        broadcastAuth("login")
-        return
-      }
-
-      const res = await authApi.login(email.trim().toLowerCase(), password)
-      setAccessToken(res.accessToken)
-      applySession(res.user)
+      const response = await authApi.login(email.trim().toLowerCase(), password)
+      setAccessToken(response.accessToken)
+      applySession(response.user)
       queryClient.clear()
       broadcastAuth("login")
     },
@@ -153,7 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const register = useCallback(async (input: RegisterInput) => {
-    if (USE_MOCK) return
     await authApi.register({
       ...input,
       firstName: input.firstName.trim(),
@@ -163,12 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    if (!USE_MOCK) {
-      try {
-        await authApi.logout()
-      } catch {
-        /* tetap bersihkan sesi lokal walau server tidak terjangkau */
-      }
+    try {
+      await authApi.logout()
+    } catch {
+      /* tetap bersihkan sesi lokal walau server tidak terjangkau */
     }
 
     clearSession()
@@ -185,9 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext)
-  if (!ctx) {
+  const context = useContext(AuthContext)
+  if (!context) {
     throw new Error("useAuth harus dipakai di dalam <AuthProvider>")
   }
-  return ctx
+  return context
 }

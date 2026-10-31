@@ -54,7 +54,7 @@ export function BillTable({ bills, onDelete, showActions = true }: BillTableProp
         <TableBody>
           {bills.map((bill) => (
             <TableRow key={bill.id} className="group">
-              <TableCell className="font-medium capitalize">{bill.lender}</TableCell>
+              <TableCell className="font-medium capitalize">{bill.lender.name}</TableCell>
               <TableCell className="max-w-52 truncate">{bill.deskripsi}</TableCell>
               <TableCell className="text-muted-foreground">
                 {formatTanggal(bill.dueDate)}

@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 
-import { AppShell } from "@/components/app-shell"
 import { Providers } from "@/components/providers"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -17,12 +16,12 @@ const fontMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Daily Expense — Pencatatan Kredit & PayLater",
+  title: "Daily Expense — Expense Manager & Bill Tracker",
   description:
-    "Aplikasi pencatatan kredit dan paylater: catat tagihan, lihat daftar, dan laporan dengan filter periode.",
+    "Kelola pengeluaran, anggaran, tagihan, paylater, dan kartu kredit dalam satu tempat.",
 }
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="id"
@@ -30,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <Providers>
-          <AppShell>{children}</AppShell>
+          {children}
           <Toaster position="top-center" />
         </Providers>
       </body>

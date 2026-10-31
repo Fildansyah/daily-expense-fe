@@ -19,7 +19,7 @@ export function BillCard({ bill, onDelete, showActions = true }: BillCardProps) 
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="font-medium capitalize">{bill.lender}</p>
+            <p className="font-medium capitalize">{bill.lender.name}</p>
             <p className="text-sm text-muted-foreground">{bill.deskripsi}</p>
           </div>
           <StatusBadge status={bill.status} />

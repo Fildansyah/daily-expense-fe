@@ -44,7 +44,7 @@ export function DeleteBillDialog({ bill, open, onOpenChange }: DeleteBillDialogP
           <DialogDescription>
             {bill && (
               <>
-                <span className="font-medium capitalize">{bill.lender}</span> —{" "}
+                <span className="font-medium capitalize">{bill.lender.name}</span> —{" "}
                 {bill.deskripsi} ({formatIDR(bill.amount)}, jatuh tempo{" "}
                 {formatTanggal(bill.dueDate)}). Tindakan ini tidak dapat dibatalkan.
               </>
